@@ -173,10 +173,6 @@ app.get("/todos/:todoId/", async (request, response) => {
 
 app.post("/todos/", async (request, response) => {
   const { id, todo, priority, status, category, dueDate } = request.body;
-  const [year, month, day] = dueDate.split("-");
-  console.log(year);
-  console.log(month);
-  console.log(day);
   let updatedColumn2 = "";
   if (priority !== "HIGH" && priority !== "LOW" && priority !== "MEDIUM") {
     updatedColumn2 = "Priority";
@@ -192,20 +188,18 @@ app.post("/todos/", async (request, response) => {
     category !== "LEARNING"
   ) {
     updatedColumn2 = "Category";
-  } else if (year.length !== 4 || month > 12 || day > 31) {
+  } else if (!isValid(new Date(dueDate))) {
     updatedColumn2 = "Due Date";
   }
 
   if (
     updatedColumn2 === "Priority" ||
     updatedColumn2 === "Status" ||
-    updatedColumn2 === "Category"
+    updatedColumn2 === "Category" ||
+    updatedColumn2 === "Due Date"
   ) {
     response.status(400);
     response.send(`Invalid Todo ${updatedColumn2}`);
-  } else if (updatedColumn2 === "Due Date") {
-    response.status(400);
-    response.send(`Invalid ${updatedColumn2}`);
   } else {
     const createToDoQuery = `INSERT INTO todo
     (id, todo, priority, status, category,due_date)
@@ -229,21 +223,22 @@ app.delete("/todos/:todoId/", async (request, response) => {
 
 app.get("/agenda/", async (request, response) => {
   try {
-    const { date } = request.query;
-    const [year, month, day] = date.split("-");
+    console.log(request.query);
 
-    if (year.length === 4 && month <= 12 && day < 31) {
+    const { date } = request.query;
+    console.log(date);
+    console.log(isValid(date));
+
+    if (false) {
       const formattedDate = format(new Date(date), "yyyy-MM-dd");
+
+      const dateObject = new Date(date);
 
       const getQueryOnDate = `SELECT * FROM todo where due_date = '${formattedDate}';`;
 
-      const dbResponse = await database.all(getQueryOnDate);
+      const dbResponse = await database.get(getQueryOnDate);
 
-      response.send(
-        dbResponse.map((eachTodo) =>
-          convertToDoDbObjectToResponseObject(eachTodo)
-        )
-      );
+      response.send(convertToDoDbObjectToResponseObject(dbResponse));
     } else {
       response.status(400);
       response.send("Invalid Due Date");
@@ -332,8 +327,7 @@ app.put("/todos/:todoId/", async (request, response) => {
         response.send("Invalid Todo Category");
       }
     } else if (requestBody.dueDate !== undefined) {
-      const [year, month, day] = requestBody.dueDate.split("-");
-      if (year.length === 4 && month <= 12 && day < 31) {
+      if (!isValid(new dueDate())) {
         updatedColumn = "Due Date";
         putFunctionValidation(todoId, updatedColumn, requestBody);
         response.send(`${updatedColumn} Updated`);
@@ -345,6 +339,10 @@ app.put("/todos/:todoId/", async (request, response) => {
       updatedColumn = "Todo";
       putFunctionValidation(todoId, updatedColumn, requestBody);
       response.send(`${updatedColumn} Updated`);
+    } else if (requestBody.dueDate !== undefined) {
+      updatedColumn = "Due Date";
+      putFunctionValidation(todoId, updatedColumn, requestBody);
+      response.send(`${updatedColumn} Updated`);
     }
   } catch (e) {
     console.log(`data base error ${e.message}`);
@@ -352,47 +350,3 @@ app.put("/todos/:todoId/", async (request, response) => {
 });
 
 module.exports = app;
-
-
-
-
-GET http://localhost:3000/todos/?status=TO%20DO
-
-###
-GET http://localhost:3000/todos/3
-
-###
-POST http://localhost:3000/todos/
-Content-Type: application/json
-
-{
-  "id": 10,
-  "priority": "HIGH",
-  "status": "IN PROGRESS",
-  "category": "LEARNING",
-  "dueDate": "22-04-04"
-}
-
-###
-DELETE http://localhost:3000/todos/3
-
-###
-GET http://localhost:3000/agenda/?date=2222-04-04
-
-###
-
-put http://localhost:3000/todos/3
-Content-Type: application/json
-
-{
-  "category": "dfsdfasd"
-}
-
-
-
-
-http://localhost/#/home/workspace/nodejs/coding-assignments/coding-assignment-1
-
-http://localhost/#/home/workspace/nodejs/coding-practices/coding-practice-8a
-
-
