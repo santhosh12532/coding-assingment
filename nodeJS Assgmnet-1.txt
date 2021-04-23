@@ -173,6 +173,10 @@ app.get("/todos/:todoId/", async (request, response) => {
 
 app.post("/todos/", async (request, response) => {
   const { id, todo, priority, status, category, dueDate } = request.body;
+  const [year, month, day] = dueDate.split("-");
+  console.log(year);
+  console.log(month);
+  console.log(day);
   let updatedColumn2 = "";
   if (priority !== "HIGH" && priority !== "LOW" && priority !== "MEDIUM") {
     updatedColumn2 = "Priority";
@@ -188,18 +192,20 @@ app.post("/todos/", async (request, response) => {
     category !== "LEARNING"
   ) {
     updatedColumn2 = "Category";
-  } else if (!isValid(new Date(dueDate))) {
+  } else if (year.length !== 4 || month > 12 || day > 31) {
     updatedColumn2 = "Due Date";
   }
 
   if (
     updatedColumn2 === "Priority" ||
     updatedColumn2 === "Status" ||
-    updatedColumn2 === "Category" ||
-    updatedColumn2 === "Due Date"
+    updatedColumn2 === "Category"
   ) {
     response.status(400);
     response.send(`Invalid Todo ${updatedColumn2}`);
+  } else if (updatedColumn2 === "Due Date") {
+    response.status(400);
+    response.send(`Invalid ${updatedColumn2}`);
   } else {
     const createToDoQuery = `INSERT INTO todo
     (id, todo, priority, status, category,due_date)
@@ -223,22 +229,21 @@ app.delete("/todos/:todoId/", async (request, response) => {
 
 app.get("/agenda/", async (request, response) => {
   try {
-    console.log(request.query);
-
     const { date } = request.query;
-    console.log(date);
-    console.log(isValid(date));
+    const [year, month, day] = date.split("-");
 
-    if (false) {
+    if (year.length === 4 && month <= 12 && day < 31) {
       const formattedDate = format(new Date(date), "yyyy-MM-dd");
-
-      const dateObject = new Date(date);
 
       const getQueryOnDate = `SELECT * FROM todo where due_date = '${formattedDate}';`;
 
-      const dbResponse = await database.get(getQueryOnDate);
+      const dbResponse = await database.all(getQueryOnDate);
 
-      response.send(convertToDoDbObjectToResponseObject(dbResponse));
+      response.send(
+        dbResponse.map((eachTodo) =>
+          convertToDoDbObjectToResponseObject(eachTodo)
+        )
+      );
     } else {
       response.status(400);
       response.send("Invalid Due Date");
@@ -327,7 +332,8 @@ app.put("/todos/:todoId/", async (request, response) => {
         response.send("Invalid Todo Category");
       }
     } else if (requestBody.dueDate !== undefined) {
-      if (!isValid(new dueDate())) {
+      const [year, month, day] = requestBody.dueDate.split("-");
+      if (year.length === 4 && month <= 12 && day < 31) {
         updatedColumn = "Due Date";
         putFunctionValidation(todoId, updatedColumn, requestBody);
         response.send(`${updatedColumn} Updated`);
@@ -337,10 +343,6 @@ app.put("/todos/:todoId/", async (request, response) => {
       }
     } else if (requestBody.todo !== undefined) {
       updatedColumn = "Todo";
-      putFunctionValidation(todoId, updatedColumn, requestBody);
-      response.send(`${updatedColumn} Updated`);
-    } else if (requestBody.dueDate !== undefined) {
-      updatedColumn = "Due Date";
       putFunctionValidation(todoId, updatedColumn, requestBody);
       response.send(`${updatedColumn} Updated`);
     }
